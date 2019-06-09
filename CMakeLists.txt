@@ -766,6 +766,8 @@ endif()
 # Installation preparation.
 #
 
+SET(CMAKE_INSTALL_PREFIX /tmp/build/ CACHE PATH "install to tmp" FORCE)
+
 # Allow the user to override installation directories.
 set(EVENT_INSTALL_LIB_DIR       lib CACHE PATH "Installation directory for libraries")
 set(EVENT_INSTALL_BIN_DIR       bin CACHE PATH "Installation directory for executables")
