@@ -535,7 +535,6 @@ set(HDR_PRIVATE
     evthread-internal.h
     ht-internal.h
     http-internal.h
-    iocp-internal.h
     ipv6-internal.h
     log-internal.h
     minheap-internal.h

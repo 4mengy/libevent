@@ -63,7 +63,6 @@
 #include "event2/util.h"
 #include "log-internal.h"
 #include "evmap-internal.h"
-#include "iocp-internal.h"
 #include "changelist-internal.h"
 #define HT_NO_CACHE_HASH_VALUES
 #include "ht-internal.h"
