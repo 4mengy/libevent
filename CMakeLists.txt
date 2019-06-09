@@ -18,11 +18,8 @@
 #       cmake -G "Visual Studio 10" ..
 #       start libevent.sln
 #
-if (WIN32)
-    cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
-else()
-    cmake_minimum_required(VERSION 2.8.0 FATAL_ERROR)
-endif()
+
+cmake_minimum_required(VERSION 2.8.0 FATAL_ERROR)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release
@@ -204,24 +201,6 @@ if (CMAKE_COMPILER_IS_GNUCC)
     add_compiler_flags(${__FLAGS})
 endif()
 
-if (APPLE)
-    # Get rid of deprecated warnings for OpenSSL on OSX 10.7 and greater.
-    add_compiler_flags(
-        -Wno-error=deprecated-declarations
-        -Qunused-arguments
-    )
-endif()
-
-# Winsock.
-if(WIN32)
-    set(CMAKE_EXTRA_INCLUDE_FILES winsock2.h ws2tcpip.h)
-    set(CMAKE_REQUIRED_LIBRARIES  ws2_32.lib)
-    set(CMAKE_REQUIRED_DEFINITIONS -FIwinsock2.h -FIws2tcpip.h)
-endif()
-if (SOLARIS)
-    set(CMAKE_REQUIRED_LIBRARIES socket nsl)
-endif()
-
 # Check if _GNU_SOURCE is available.
 CHECK_SYMBOL_EXISTS(__GNU_LIBRARY__ "features.h" _GNU_SOURCE)
 
@@ -376,9 +355,7 @@ if(HAVE_PORT_H AND HAVE_PORT_CREATE)
     set(EVENT__HAVE_EVENT_PORTS 1)
 endif()
 
-if(NOT WIN32)
-    CHECK_FUNCTION_EXISTS_EX(select EVENT__HAVE_SELECT)
-endif()
+CHECK_FUNCTION_EXISTS_EX(select EVENT__HAVE_SELECT)
 
 CHECK_TYPE_SIZE("uint8_t" EVENT__HAVE_UINT8_T)
 CHECK_TYPE_SIZE("uint16_t" EVENT__HAVE_UINT16_T)
@@ -390,13 +367,6 @@ CHECK_TYPE_SIZE("unsigned" EVENT__SIZEOF_UNSIGNED BUILTIN_TYPES_ONLY)
 CHECK_TYPE_SIZE("unsigned int" EVENT__SIZEOF_UNSIGNED_INT BUILTIN_TYPES_ONLY)
 CHECK_TYPE_SIZE("long" EVENT__SIZEOF_LONG BUILTIN_TYPES_ONLY)
 CHECK_TYPE_SIZE("long long" EVENT__SIZEOF_LONG_LONG BUILTIN_TYPES_ONLY)
-
-if(WIN32)
-    # These aren't available until Windows Vista.
-    # But you can still link them. They just won't be found when running the exe.
-    set(EVENT__HAVE_INET_NTOP 0)
-    set(EVENT__HAVE_INET_PTON 0)
-endif()
 
 # Check for different inline keyword versions.
 check_function_keywords("inline" "__inline" "__inline__")
@@ -433,10 +403,6 @@ CHECK_TYPE_SIZE("off_t" EVENT__SIZEOF_OFF_T LANGUAGE C)
 
 # XXX we should functionalize these size and type sets. --elley
 
-# Winssck.
-if (_MSC_VER)
-    list(APPEND CMAKE_EXTRA_INCLUDE_FILES BaseTsd.h)
-endif()
 CHECK_TYPE_SIZE("ssize_t" EVENT__SIZEOF_SSIZE_T_LOWER LANGUAGE C)
 CHECK_TYPE_SIZE("SSIZE_T" EVENT__SIZEOF_SSIZE_T_UPPER LANGUAGE C)
 
@@ -494,17 +460,6 @@ CHECK_TYPE_SIZE("void *" EVENT__SIZEOF_VOID_P)
 
 include(CheckWaitpidSupportWNOWAIT)
 
-# Verify kqueue works with pipes.
-if (EVENT__HAVE_KQUEUE)
-    if (CMAKE_CROSSCOMPILING AND NOT EVENT__FORCE_KQUEUE_CHECK)
-        message(WARNING "Cannot check if kqueue works with pipes when crosscompiling, use EVENT__FORCE_KQUEUE_CHECK to be sure (this requires manually running a test program on the cross compilation target)")
-        set(EVENT__HAVE_WORKING_KQUEUE 1)
-    else()
-        message(STATUS "Checking if kqueue works with pipes...")
-        include(CheckWorkingKqueue)
-    endif()
-endif()
-
 CHECK_SYMBOL_EXISTS(_MINIX "stdio.h" EVENT___MINIX)
 CHECK_SYMBOL_EXISTS(_POSIX_1_SOURCE "stdio.h" EVENT___POSIX_1_SOURCE)
 CHECK_SYMBOL_EXISTS(_POSIX_SOURCE "stdio.h" EVENT___POSIX_SOURCE)
@@ -512,36 +467,24 @@ CHECK_SYMBOL_EXISTS(_POSIX_SOURCE "stdio.h" EVENT___POSIX_SOURCE)
 if(EVENT__HAVE_NETDB_H)
     list(APPEND CMAKE_EXTRA_INCLUDE_FILES netdb.h)
     CHECK_TYPE_SIZE("struct addrinfo" EVENT__HAVE_STRUCT_ADDRINFO)
-elseif(WIN32)
-    list(APPEND CMAKE_EXTRA_INCLUDE_FILES ws2tcpip.h)
-    CHECK_TYPE_SIZE("struct addrinfo" EVENT__HAVE_STRUCT_ADDRINFO)
 endif()
 
 # Check for sockaddr structure sizes.
 set(SOCKADDR_HEADERS)
-if (WIN32)
-    set(CMAKE_REQUIRED_DEFINITIONS "-DWIN32_LEAN_AND_MEAN")
-    if (_MSC_VER LESS 1300)
-        set(SOCKADDR_HEADERS winsock.h)
-    else()
-        set(SOCKADDR_HEADERS winsock2.h ws2tcpip.h)
-    endif()
-else()
-    if (EVENT__HAVE_NETINET_IN_H)
-        set(SOCKADDR_HEADERS ${SOCKADDR_HEADERS} netinet/in.h)
-    endif()
+if (EVENT__HAVE_NETINET_IN_H)
+    set(SOCKADDR_HEADERS ${SOCKADDR_HEADERS} netinet/in.h)
+endif()
 
-    if (EVENT__HAVE_NETINET_IN6_H)
-        set(SOCKADDR_HEADERS ${SOCKADDR_HEADERS} netinet/in6.h)
-    endif()
+if (EVENT__HAVE_NETINET_IN6_H)
+    set(SOCKADDR_HEADERS ${SOCKADDR_HEADERS} netinet/in6.h)
+endif()
 
-    if (EVENT__HAVE_SYS_SOCKET_H)
-        set(SOCKADDR_HEADERS ${SOCKADDR_HEADERS} sys/socket.h)
-    endif()
+if (EVENT__HAVE_SYS_SOCKET_H)
+    set(SOCKADDR_HEADERS ${SOCKADDR_HEADERS} sys/socket.h)
+endif()
 
-    if (EVENT__HAVE_NETDB_H)
-        set(SOCKADDR_HEADERS ${SOCKADDR_HEADERS} netdb.h)
-    endif()
+if (EVENT__HAVE_NETDB_H)
+    set(SOCKADDR_HEADERS ${SOCKADDR_HEADERS} netdb.h)
 endif()
 
 CHECK_TYPE_SIZE("struct in6_addr" EVENT__HAVE_STRUCT_IN6_ADDR)
@@ -659,24 +602,8 @@ if(EVENT__HAVE_SELECT)
     list(APPEND SRC_CORE select.c)
 endif()
 
-if(EVENT__HAVE_POLL)
-    list(APPEND SRC_CORE poll.c)
-endif()
-
-if(EVENT__HAVE_KQUEUE)
-    list(APPEND SRC_CORE kqueue.c)
-endif()
-
-if(EVENT__HAVE_DEVPOLL)
-    list(APPEND SRC_CORE devpoll.c)
-endif()
-
 if(EVENT__HAVE_EPOLL)
     list(APPEND SRC_CORE epoll_sub.c epoll.c)
-endif()
-
-if(EVENT__HAVE_EVENT_PORTS)
-    list(APPEND SRC_CORE evport.c)
 endif()
 
 if (NOT EVENT__DISABLE_OPENSSL)
@@ -695,31 +622,15 @@ if (NOT EVENT__DISABLE_OPENSSL)
 endif()
 
 if (NOT EVENT__DISABLE_THREAD_SUPPORT)
-    if (WIN32)
-        list(APPEND SRC_CORE evthread_win32.c)
-    else()
-        find_package(Threads REQUIRED)
-        if (NOT CMAKE_USE_PTHREADS_INIT)
-            message(FATAL_ERROR
-                            "Failed to find Pthreads, set EVENT__DISABLE_THREAD_SUPPORT to disable")
-        endif()
-
-        set(EVENT__HAVE_PTHREADS 1)
-        list(APPEND SRC_CORE evthread_pthread.c)
-        list(APPEND LIB_APPS ${CMAKE_THREAD_LIBS_INIT})
+    find_package(Threads REQUIRED)
+    if (NOT CMAKE_USE_PTHREADS_INIT)
+        message(FATAL_ERROR
+                        "Failed to find Pthreads, set EVENT__DISABLE_THREAD_SUPPORT to disable")
     endif()
-endif()
 
-if (NOT EVENT__DISABLE_TESTS)
-    # Zlib is only used for testing.
-    find_package(ZLIB)
-
-    if (ZLIB_LIBRARY AND ZLIB_INCLUDE_DIR)
-        include_directories(${ZLIB_INCLUDE_DIRS})
-
-        set(EVENT__HAVE_LIBZ 1)
-        list(APPEND LIB_APPS ${ZLIB_LIBRARIES})
-    endif()
+    set(EVENT__HAVE_PTHREADS 1)
+    list(APPEND SRC_CORE evthread_pthread.c)
+    list(APPEND LIB_APPS ${CMAKE_THREAD_LIBS_INIT})
 endif()
 
 set(SRC_EXTRA
@@ -736,30 +647,8 @@ include_directories(BEFORE ${PROJECT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/compat
     ${PROJECT_SOURCE_DIR}/include)
 
-if(WIN32)
-    list(APPEND SRC_CORE
-        buffer_iocp.c
-        bufferevent_async.c
-        event_iocp.c
-        win32select.c)
-
-    list(APPEND HDR_PRIVATE WIN32-Code/getopt.h)
-
-    set(EVENT__DNS_USE_FTIME_FOR_ID 1)
-    set(LIB_PLATFORM ws2_32)
-    add_definitions(
-            -D_CRT_SECURE_NO_WARNINGS
-            -D_CRT_NONSTDC_NO_DEPRECATE)
-
-    include_directories(./WIN32-Code)
-endif()
-
 if (UNIX)
     list(APPEND LIB_PLATFORM m)
-endif()
-
-if (SOLARIS)
-    list(APPEND LIB_PLATFORM socket nsl)
 endif()
 
 source_group("Headers Private"  FILES ${HDR_PRIVATE})
@@ -862,468 +751,17 @@ else (EVENT__BUILD_SHARED_LIBRARIES)
     set(EVENT_EXTRA_FOR_TEST event_extra)
 endif (EVENT__BUILD_SHARED_LIBRARIES)
 
-#
-# Samples.
-#
 
-if (NOT EVENT__DISABLE_SAMPLES)
-    set(SAMPLES
-        dns-example
-        event-read-fifo
-        hello-world
-        signal-test
-        http-server
-        http-connect
-        time-test)
+set(BACKENDS "")
 
-    if (NOT EVENT__DISABLE_OPENSSL AND OPENSSL_LIBRARIES)
-        set(CMAKE_REQUIRED_LIBRARIES ${OPENSSL_LIBRARIES})
-        CHECK_FUNCTION_EXISTS_EX(ERR_remove_thread_state EVENT__HAVE_ERR_REMOVE_THREAD_STATE)
-        set(CMAKE_REQUIRED_LIBRARIES "")
-
-        # Special sample with more than one file.
-        add_executable(https-client
-            sample/https-client.c
-            sample/openssl_hostname_validation.c
-            sample/hostcheck.c)
-
-        target_link_libraries(https-client
-                    event_extra
-                    ${LIB_APPS}
-                    ${LIB_PLATFORM})
-
-        add_dependencies(https-client event_extra)
-
-        # Requires OpenSSL.
-        list(APPEND SAMPLES le-proxy)
-    endif()
-
-    foreach(SAMPLE ${SAMPLES})
-        add_executable(${SAMPLE}
-                    sample/${SAMPLE}.c)
-
-        target_link_libraries(${SAMPLE}
-                    event_extra
-                    ${LIB_APPS}
-                    ${LIB_PLATFORM})
-
-        add_dependencies(${SAMPLE} event_extra)
-    endforeach()
-
-    if (WIN32)
-        target_sources(dns-example PUBLIC
-                       WIN32-Code/getopt.c
-                       WIN32-Code/getopt_long.c)
-    endif()
+if (EVENT__HAVE_EPOLL)
+    list(APPEND BACKENDS EPOLL)
 endif()
 
-if (NOT EVENT__DISABLE_BENCHMARK)
-    foreach (BENCHMARK bench bench_cascade bench_http bench_httpclient)
-        set(BENCH_SRC test/${BENCHMARK}.c)
-
-        if (WIN32)
-            list(APPEND BENCH_SRC
-                            WIN32-Code/getopt.c
-                            WIN32-Code/getopt_long.c)
-        endif()
-
-        add_executable(${BENCHMARK} ${BENCH_SRC})
-
-        target_link_libraries(${BENCHMARK}
-                    event_extra
-                    ${LIB_PLATFORM})
-
-        add_dependencies(${BENCHMARK} event_extra)
-    endforeach()
+if (EVENT__HAVE_SELECT)
+    list(APPEND BACKENDS SELECT)
 endif()
 
-if (NOT EVENT__DISABLE_TESTS)
-    #
-    # Generate Regress tests.
-    #
-    if (NOT EVENT__DISABLE_REGRESS)
-
-        # (We require python2 to generate the regress tests)
-        foreach (PY python2.6 python2.7 python2)
-            unset(FIND_PYTHON2 CACHE)
-            find_program(FIND_PYTHON2 ${PY})
-            if (FIND_PYTHON2)
-                set(PYTHON_EXECUTABLE "${PY}")
-                break()
-            endif()
-        endforeach()
-        find_package(PythonInterp)
-
-        if (PYTHONINTERP_FOUND AND PYTHON_VERSION_STRING VERSION_LESS "3.0.0")
-            set(__FOUND_USABLE_PYTHON 1)
-        endif()
-
-        if (__FOUND_USABLE_PYTHON)
-            message(STATUS "Generating regress tests...")
-
-            add_definitions(-DTINYTEST_LOCAL)
-
-            add_custom_command(
-                OUTPUT
-                    ${CMAKE_CURRENT_SOURCE_DIR}/test/regress.gen.c
-                    ${CMAKE_CURRENT_SOURCE_DIR}/test/regress.gen.h
-                DEPENDS
-                    event_rpcgen.py
-                    test/regress.rpc
-                COMMAND ${PYTHON_EXECUTABLE} ../event_rpcgen.py regress.rpc
-                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/test)
-
-            list(APPEND SRC_REGRESS
-                test/regress.c
-                test/regress.gen.c
-                test/regress.gen.h
-                test/regress_buffer.c
-                test/regress_bufferevent.c
-                test/regress_dns.c
-                test/regress_et.c
-                test/regress_finalize.c
-                test/regress_http.c
-                test/regress_listener.c
-                test/regress_main.c
-                test/regress_minheap.c
-                test/regress_rpc.c
-                test/regress_testutils.c
-                test/regress_testutils.h
-                test/regress_util.c
-                test/tinytest.c
-                ${SRC_CORE}
-                ${SRC_EXTRA})
-
-            if (WIN32)
-                list(APPEND SRC_REGRESS test/regress_iocp.c)
-                if (NOT EVENT__DISABLE_THREAD_SUPPORT)
-                    list(APPEND SRC_REGRESS test/regress_thread.c)
-                endif()
-            endif()
-
-            if (CMAKE_USE_PTHREADS_INIT)
-                list(APPEND SRC_REGRESS test/regress_thread.c)
-            endif()
-
-            if (ZLIB_LIBRARY AND ZLIB_INCLUDE_DIR)
-                list(APPEND SRC_REGRESS test/regress_zlib.c)
-            endif()
-
-            if (OPENSSL_LIBRARIES)
-                list(APPEND SRC_REGRESS test/regress_ssl.c)
-            endif()
-
-            add_executable(regress ${SRC_REGRESS})
-
-            # While building the test suite we don't want the visibility
-            # header trying to "dllimport" the symbols on windows (it
-            # generates a ton of warnings due to different link
-            # attributes for all of the symbols)
-            SET_TARGET_PROPERTIES(regress
-                            PROPERTIES COMPILE_DEFINITIONS
-              "EVENT_BUILDING_REGRESS_TEST=1")
-
-            target_link_libraries(regress
-                            ${LIB_APPS}
-                            ${LIB_PLATFORM})
-        else()
-            message(WARNING "No suitable Python interpreter found, cannot generate regress tests!")
-        endif()
-    endif()
-
-    #
-    # Test programs.
-    #
-        # all of these, including the cmakelists.txt should be moved
-        # into the dirctory 'tests' first.
-        #
-        # doing this, we can remove all the DISABLE_TESTS stuff, and simply
-        # do something like:
-        #
-        # add_custom_targets(tests)
-        # add_executable(... EXCLUDE_FROM_ALL ...c)
-        # add_dependencis(tests testa testb testc)
-        # add_test(....)
-        #
-        # then you can just run 'make tests' instead of them all
-        # auto-compile|running
-        # - ellzey
-    set(TESTPROGS   test-changelist
-                    test-eof
-                    test-fdleak
-                    test-init
-                    test-time
-                    test-weof)
-
-    set(ALL_TESTPROGS
-            ${TESTPROGS}
-            test-dumpevents
-            test-ratelim)
-
-    # Create test program executables.
-    foreach (TESTPROG ${ALL_TESTPROGS})
-        add_executable(${TESTPROG}
-                    test/${TESTPROG}.c)
-
-        target_link_libraries(${TESTPROG}
-                    ${EVENT_EXTRA_FOR_TEST}
-                    ${LIB_PLATFORM})
-
-        add_dependencies(${TESTPROG}
-                    ${EVENT_EXTRA_FOR_TEST})
-    endforeach()
-
-    #
-    # We run all tests with the different backends turned on one at a time.
-    #
-
-    # Add event backends based on system introspection result.
-    set(BACKENDS "")
-
-    if (EVENT__HAVE_EPOLL)
-        list(APPEND BACKENDS EPOLL)
-    endif()
-
-    if (EVENT__HAVE_SELECT)
-        list(APPEND BACKENDS SELECT)
-    endif()
-
-    if (EVENT__HAVE_POLL)
-        list(APPEND BACKENDS POLL)
-    endif()
-
-    if (EVENT__HAVE_KQUEUE)
-        list(APPEND BACKENDS KQUEUE)
-    endif()
-
-    if (EVENT__HAVE_EVENT_PORTS)
-        list(APPEND BACKENDS EVPORT)
-    endif()
-
-    if (EVENT__HAVE_DEVPOLL)
-        list(APPEND BACKENDS DEVPOLL)
-    endif()
-
-    if (WIN32)
-        list(APPEND BACKENDS WIN32)
-    endif()
-
-
-    # Default environment variables turns off all event systems,
-    # then we enable each one, one at a time when creating the tests.
-    set(DEFAULT_TEST_ENV_VARS "EVENT_SHOW_METHOD=1;")
-    foreach(BACKEND ${BACKENDS})
-        set(BACKEND_ENV_VAR "EVENT_NO${BACKEND}=1")
-        list(APPEND DEFAULT_TEST_ENV_VARS "${BACKEND_ENV_VAR}")
-    endforeach()
-
-    # Macro that creates the ctest test for a backend.
-    macro(add_backend_test BACKEND_TEST_NAME ENV_VARS)
-        set(TEST_NAMES "")
-
-        foreach (TESTPROG ${TESTPROGS})
-            set(TEST_NAME ${TESTPROG}__${BACKEND_TEST_NAME})
-
-            add_test(${TEST_NAME}
-                            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${TESTPROG})
-
-            list(APPEND TEST_NAMES ${TEST_NAME})
-
-            set_tests_properties(${TEST_NAME}
-                            PROPERTIES ENVIRONMENT "${ENV_VARS}")
-        endforeach()
-
-        # Dump events test.
-        if (__FOUND_USABLE_PYTHON)
-            set(TEST_NAME test-dumpevents__${BACKEND_TEST_NAME})
-
-            add_test(${TEST_NAME}
-                            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test-dumpevents |
-                            ${PYTHON_EXECUTABLE}
-                            ${CMAKE_CURRENT_SOURCE_DIR}/test/check-dumpevents.py)
-
-            set_tests_properties(${TEST_NAME}
-                            PROPERTIES ENVIRONMENT "${ENV_VARS}")
-        else()
-            message(WARNING "test-dumpevents will be run without output check since python was not found!")
-            set(TEST_NAME test-dumpevents__${BACKEND_TEST_NAME}_no_check)
-
-            add_test(${TEST_NAME}
-                            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test-dumpevents)
-
-            set_tests_properties(${TEST_NAME}
-                            PROPERTIES ENVIRONMENT "${ENV_VARS}")
-        endif()
-
-        # Regress tests.
-        if (NOT EVENT__DISABLE_REGRESS AND __FOUND_USABLE_PYTHON)
-            set(TEST_NAME regress__${BACKEND_TEST_NAME})
-
-            add_test(${TEST_NAME}
-                            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/regress)
-
-            set_tests_properties(${TEST_NAME}
-                            PROPERTIES ENVIRONMENT "${ENV_VARS}")
-
-            add_test(${TEST_NAME}_debug
-                            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/regress)
-
-            set_tests_properties(${TEST_NAME}_debug
-                            PROPERTIES ENVIRONMENT "${ENV_VARS};EVENT_DEBUG_MODE=1")
-        endif()
-    endmacro()
-
-    # Add the tests for each backend.
-    foreach(BACKEND ${BACKENDS})
-        # Enable this backend only.
-        set(BACKEND_ENV_VARS ${DEFAULT_TEST_ENV_VARS})
-        list(REMOVE_ITEM BACKEND_ENV_VARS EVENT_NO${BACKEND}=1)
-
-        # Epoll has some extra settings.
-        if (${BACKEND} STREQUAL "EPOLL")
-            add_backend_test(timerfd_${BACKEND}
-                            "${BACKEND_ENV_VARS};EVENT_PRECISE_TIMER=1")
-
-            add_backend_test(changelist_${BACKEND}
-                            "${BACKEND_ENV_VARS};EVENT_EPOLL_USE_CHANGELIST=yes")
-
-            add_backend_test(timerfd_changelist_${BACKEND}
-                            "${BACKEND_ENV_VARS};EVENT_EPOLL_USE_CHANGELIST=yes;EVENT_PRECISE_TIMER=1")
-        else()
-            add_backend_test(${BACKEND} "${BACKEND_ENV_VARS}")
-        endif()
-    endforeach()
-
-    #
-    # Rate limiter tests.
-    #
-
-    # Group limits, no connection limit.
-        set(RL_BIN  ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test-ratelim)
-
-    add_test(test-ratelim__group_lim
-                ${RL_BIN}
-                -g 30000
-                -n 30
-                -t 100
-                --check-grouplimit 1000
-                --check-stddev 100)
-
-    # Connection limit, no group limit.
-    add_test(test-ratelim__con_lim
-                ${RL_BIN}
-                -c 1000
-                -n 30
-                -t 100
-                --check-connlimit 50
-                --check-stddev 50)
-
-    # Connection limit and group limit.
-    add_test(test-ratelim__group_con_lim
-                ${RL_BIN}
-                -c 1000
-                -g 30000
-                -n 30
-                -t 100
-                --check-grouplimit 1000
-                --check-connlimit 50
-                --check-stddev 50)
-
-    # Connection limit and group limit with independent drain.
-    add_test(test-ratelim__group_con_lim_drain
-                ${RL_BIN}
-                -c 1000
-                -g 35000
-                -n 30
-                -t 100
-                -G 500
-                --check-grouplimit 1000
-                --check-connlimit 50
-                --check-stddev 50)
-
-    # Add a "make verify" target, same as for autoconf.
-    # (Important! This will unset all EVENT_NO* environment variables.
-    #  If they are set in the shell the tests are running using simply "ctest" or "make test" will fail)
-    if (WIN32)
-        # Windows doesn't have "unset". But you can use "set VAR=" instead.
-        # We need to guard against the possibility taht EVENT_NOWIN32 is set, and all test failing
-        # since no event backend being available.
-        file(TO_NATIVE_PATH ${CMAKE_CTEST_COMMAND} WINDOWS_CTEST_COMMAND)
-
-        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/tmp/verify_tests.bat
-            "
-            set EVENT_NOWIN32=
-            \"${WINDOWS_CTEST_COMMAND}\"
-            ")
-
-        message(STATUS "${WINDOWS_CTEST_COMMAND}")
-
-        file(COPY ${CMAKE_CURRENT_BINARY_DIR}/tmp/verify_tests.bat
-            DESTINATION
-                            ${CMAKE_CURRENT_BINARY_DIR}
-            FILE_PERMISSIONS
-                            OWNER_READ
-                            OWNER_WRITE
-                            OWNER_EXECUTE
-                            GROUP_READ
-                            GROUP_EXECUTE
-                            WORLD_READ WORLD_EXECUTE)
-
-        file(TO_NATIVE_PATH
-                    "${CMAKE_CURRENT_BINARY_DIR}/verify_tests.bat" VERIFY_PATH)
-
-        add_custom_target(verify COMMAND "${VERIFY_PATH}"
-                        DEPENDS event ${ALL_TESTPROGS})
-    else()
-        # On some platforms doing exec(unset) as CMake does won't work, so make sure
-        # we run the unset command in a shell instead.
-        # First we write the script contents.
-        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/tmp/verify_tests.sh
-            "
-            #!/bin/bash
-            unset EVENT_NOEPOLL; unset EVENT_NOPOLL; unset EVENT_NOSELECT; unset EVENT_NOWIN32; unset EVENT_NOEVPORT; unset EVENT_NOKQUEUE; unset EVENT_NODEVPOLL
-            ${CMAKE_CTEST_COMMAND}
-            ")
-
-        # Then we copy the file (this allows us to set execute permission on it)
-        file(COPY ${CMAKE_CURRENT_BINARY_DIR}/tmp/verify_tests.sh
-            DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
-            FILE_PERMISSIONS
-                            OWNER_READ
-                            OWNER_WRITE
-                            OWNER_EXECUTE
-                            GROUP_READ
-                            GROUP_EXECUTE
-                            WORLD_READ
-                            WORLD_EXECUTE)
-
-        # Create the target that runs the script.
-        add_custom_target(verify
-                    COMMAND
-                        ${CMAKE_CURRENT_BINARY_DIR}/verify_tests.sh
-          DEPENDS
-                        event
-                        ${ALL_TESTPROGS})
-    endif()
-
-    if (NOT EVENT__DISABLE_REGRESS AND __FOUND_USABLE_PYTHON)
-        add_dependencies(verify regress)
-    endif()
-
-    if (EVENT__COVERAGE)
-        include(CodeCoverage)
-
-        setup_target_for_coverage(
-            verify_coverage # Coverage target name "make verify_coverage"
-            make            # Test runner.
-            coverage        # Output directory.
-            verify)         # Arguments passed to test runner. "make verify"
-    endif()
-
-    enable_testing()
-
-    include(CTest)
-endif()
 
 #
 # Installation preparation.
@@ -1334,11 +772,7 @@ set(EVENT_INSTALL_LIB_DIR       lib CACHE PATH "Installation directory for libra
 set(EVENT_INSTALL_BIN_DIR       bin CACHE PATH "Installation directory for executables")
 set(EVENT_INSTALL_INCLUDE_DIR   include CACHE PATH "Installation directory for header files")
 
-if(WIN32 AND NOT CYGWIN)
-  set(DEF_INSTALL_CMAKE_DIR cmake)
-else()
-  set(DEF_INSTALL_CMAKE_DIR lib/cmake/libevent)
-endif()
+set(DEF_INSTALL_CMAKE_DIR lib/cmake/libevent)
 
 set(EVENT_INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH "Installation directory for CMake files")
 
